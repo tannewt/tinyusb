@@ -43,6 +43,8 @@
 #ifndef _TUSB_OSAL_NONE_H_
 #define _TUSB_OSAL_NONE_H_
 
+#include "tusb_hal.h"
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -161,8 +163,14 @@ static inline osal_queue_t osal_queue_create(osal_queue_def_t* qdef)
 
 static inline bool osal_queue_send(osal_queue_t const queue_hdl, void const * data, bool in_isr)
 {
-  (void) in_isr;
-  return tu_fifo_write( (tu_fifo_t*) queue_hdl, data);
+  if (!in_isr) {
+    tusb_hal_int_disable(0);
+  }
+  bool success = tu_fifo_write( (tu_fifo_t*) queue_hdl, data);
+  if (!in_isr) {
+    tusb_hal_int_enable(0);
+  }
+  return success;
 }
 
 static inline void osal_queue_reset(osal_queue_t const queue_hdl)
@@ -171,7 +179,10 @@ static inline void osal_queue_reset(osal_queue_t const queue_hdl)
 }
 
 static inline tusb_error_t osal_queue_receive(osal_queue_t const queue_hdl, void* data) {
-  if (!tu_fifo_read(queue_hdl, data)) {
+  tusb_hal_int_disable(0);
+  bool success = tu_fifo_read(queue_hdl, data);
+  tusb_hal_int_enable(0);
+  if (!success) {
     return TUSB_ERROR_OSAL_WAITING;
   }
   return TUSB_ERROR_NONE;
