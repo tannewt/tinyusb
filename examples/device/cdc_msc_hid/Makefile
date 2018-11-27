@@ -12,7 +12,7 @@ endif
 # If the build directory is not given, make it reflect the board name.
 BUILD ?= build-$(BOARD)
 
-CROSS_COMPILE = arm-none-eabi-
+#CROSS_COMPILE ?= arm-none-eabi-
 
 include $(TOP)/hw/bsp/$(BOARD)/board.mk
 
