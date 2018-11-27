@@ -42,6 +42,22 @@
 
 #include "device/dcd.h"
 
+void isr(void);
+__attribute__ ((used)) void isr(void)
+{
+        //irqs = irq_pending() & irq_getmask();
+}
+
+void board_init(void)
+{
+}
+
+uint32_t tusb_hal_millis(void)
+{
+  return 0;
+}
+
+
 // Setup the control endpoint 0.
 /*
 static void bus_reset(void) {

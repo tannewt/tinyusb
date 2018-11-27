@@ -7,7 +7,18 @@ CFLAGS = \
 	-Wno-error=int-to-pointer-cast \
 	-Wno-error=shadow \
 	$(CPUFLAGS) \
-
+	-g3 \
+	-fomit-frame-pointer\
+	-fno-builtin \
+	-flto \
+	-fuse-linker-plugin \
+	-Os \
+	-ffunction-sections \
+	-fdata-sections \
+	-flto \
+	-nostartfiles \
+	-nostdlib \
+	-nodefaultlibs
 
 # All source paths should be relative to the top level.
 LD_FILE = hw/bsp/valentyusb/linker.ld
@@ -17,6 +28,10 @@ LDFLAGS += \
 	-L$(BUILDINC_DIRECTORY)/../libbase \
 	-L$(BUILDINC_DIRECTORY)/../libcompiler_rt \
 	$(BUILDINC_DIRECTORY)/../libbase/crt0-$(CPU)-xip.o \
+	$(BUILDINC_DIRECTORY)/../libbase/libbase-nofloat.a \
+	$(BUILDINC_DIRECTORY)/../libcompiler_rt/libcompiler_rt.a \
+	-lbase-nofloat \
+	-lcompiler_rt \
 
 LIBS = \
 	-lbase-nofloat \
