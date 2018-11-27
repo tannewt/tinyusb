@@ -70,7 +70,7 @@ typedef struct ATTR_ALIGNED(4)
 
   union {
     // USBD_EVT_SETUP_RECEIVED
-    tusb_control_request_t setup_received;
+    tusb_control_request_t setup_received ATTR_ALIGNED(4);
 
     // USBD_EVT_XFER_COMPLETE
     struct {
@@ -83,11 +83,16 @@ typedef struct ATTR_ALIGNED(4)
     struct {
       void (*func) (void*);
       void* param;
-    }func_call;
+    }func_call ATTR_ALIGNED(4);
   };
 } dcd_event_t;
 
-TU_VERIFY_STATIC(sizeof(dcd_event_t) <= 12, "size is not correct");
+TU_VERIFY_STATIC(
+    offsetof(dcd_event_t, setup_received) % 4 == 0,
+    "dcd_event_t.setup_received not aligned correctly (DMA location needs to be aligned)");
+TU_VERIFY_STATIC(
+    offsetof(dcd_event_t, func_call) % 4 == 0,
+    "dcd_event_t.func_call not aligned correctly (function pointers must be aligned)");
 
 /*------------------------------------------------------------------*/
 /* Device API (Weak is optional)
