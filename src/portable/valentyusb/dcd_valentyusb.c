@@ -40,15 +40,10 @@
 
 #include "device/dcd.h"
 
-/*------------------------------------------------------------------*/
-/* MACRO TYPEDEF CONSTANT ENUM
- *------------------------------------------------------------------*/
-static ATTR_ALIGNED(4) uint8_t _setup_packet[8];
-
 // Setup the control endpoint 0.
 static void bus_reset(void) {
     // Prepare for setup packet
-    dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+    //dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
 }
 
 
@@ -58,17 +53,14 @@ static void bus_reset(void) {
 bool dcd_init (uint8_t rhport)
 {
   (void) rhport;
-
   return true;
 }
 
 void dcd_connect (uint8_t rhport)
 {
-
 }
 void dcd_disconnect (uint8_t rhport)
 {
-
 }
 
 void dcd_set_address (uint8_t rhport, uint8_t dev_addr)
@@ -92,28 +84,29 @@ void dcd_set_config (uint8_t rhport, uint8_t config_num)
 bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt)
 {
   (void) rhport;
+  (void) desc_edpt;
 
-  uint8_t const epnum = edpt_number(desc_edpt->bEndpointAddress);
-  uint8_t const dir   = edpt_dir(desc_edpt->bEndpointAddress);
-
-  uint32_t size_value = 0;
-  while (size_value < 7) {
-    if (1 << (size_value + 3) == desc_edpt->wMaxPacketSize.size) {
-      break;
-    }
-    size_value++;
-  }
-
-  // unsupported endpoint size
-  if ( size_value == 7 && desc_edpt->wMaxPacketSize.size != 1023 ) return false;
-
-  if ( dir == TUSB_DIR_OUT )
-  {
-  }else
-  {
-  }
+  //uint8_t const epnum = edpt_number(desc_edpt->bEndpointAddress);
+  ///uint8_t const dir   = edpt_dir(desc_edpt->bEndpointAddress);
 
   return true;
+}
+
+void poll_usb_endpoints()
+{
+  // Endpoint zero has data.
+  if (usb_ep_0_out_empty_read()) {
+    usb_ep_0_out_head_write(0);           // Push the FIFO forward by one
+    //buffer[i] = usb_ep_0_out_head_read(); // Read the data
+    //dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+    //dcd_event_setup_received(0, (uint8_t*), true);
+    //dcd_event_bus_signal(0, DCD_EVENT_SOF, true);
+  } else {
+    if (usb_ep_0_in_empty_read()) {
+      // FIXME: The endpoint has finished sending the bytes...
+      dcd_event_xfer_complete(0, ep_addr, total_bytes, XFER_RESULT_SUCCESS, true);
+    }
+  }
 }
 
 bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
@@ -121,21 +114,31 @@ bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t 
   (void) rhport;
 
   uint8_t const epnum = edpt_number(ep_addr);
+  if (epnum != 0) {
+    return false;
+  }
   uint8_t const dir   = edpt_dir(ep_addr);
 
-  // A setup token can occur immediately after an OUT STATUS packet so make sure we have a valid
-  // buffer for the control endpoint.
-  if (epnum == 0 && dir == 0 && buffer == NULL) {
-    buffer = _setup_packet;
+  if ( dir == TUSB_DIR_OUT ) {
+    for(uint16_t i = 0; i < total_bytes; i++) {
+      while (usb_ep_0_out_empty_read());    // Poll for data in the FIFO
+      usb_ep_0_out_head_write(0);           // Push the FIFO forward by one
+      buffer[i] = usb_ep_0_out_head_read(); // Read the data
+    }
+    dcd_event_xfer_complete(0, ep_addr, total_bytes, XFER_RESULT_SUCCESS, true);
+    return true;
+  } else {
+    // If the buffer isn't empty, we can't write new data.
+    if (!usb_ep_0_in_empty_read()) {
+      return false;
+    }
+    // Push the data into the outgoing FIFO
+    for(uint16_t i = 0; i < total_bytes; i++) {
+      usb_ep_0_in_head_write(buffer[i]);
+    }
+    // FIXME: Arm the endpoint here..
+    return true;
   }
-
-  if ( dir == TUSB_DIR_OUT )
-  {
-  } else
-  {
-  }
-
-  return true;
 }
 
 bool dcd_edpt_stalled (uint8_t rhport, uint8_t ep_addr)
@@ -160,78 +163,16 @@ bool dcd_edpt_busy (uint8_t rhport, uint8_t ep_addr)
 {
   (void) rhport;
 
-  // USBD shouldn't check control endpoint state
-  if ( 0 == ep_addr ) return false;
-
   uint8_t const epnum = edpt_number(ep_addr);
+  uint8_t const dir   = edpt_dir(ep_addr);
 
-  if (edpt_dir(ep_addr) == TUSB_DIR_IN) {
+  if ( dir == TUSB_DIR_OUT ) {
+    // ???
+  } else {
+    return !usb_ep_0_in_empty_read();
   }
 }
 
 /*------------------------------------------------------------------*/
-
-static bool maybe_handle_setup_packet(void) {
-    //if (USB->DEVICE.DeviceEndpoint[0].EPINTFLAG.bit.RXSTP)
-    //{
-        // This copies the data elsewhere so we can reuse the buffer.
-        dcd_event_setup_received(0, (uint8_t*) sram_registers[0][0].ADDR.reg, true);
-        return true;
-    //}
-    return false;
-}
-/*
- *------------------------------------------------------------------*/
-void USB_0_Handler(void) {
-  /*------------- Interrupt Processing -------------*/
-  if ( false )
-  {
-    bus_reset();
-    dcd_event_bus_signal(0, DCD_EVENT_BUS_RESET, true);
-  }
-
-  // Setup packet received.
-  maybe_handle_setup_packet();
-}
-/* USB_SOF_HSOF */
-void USB_1_Handler(void) {
-    dcd_event_bus_signal(0, DCD_EVENT_SOF, true);
-}
-
-void transfer_complete(uint8_t direction) {
-    uint32_t epints = USB->DEVICE.EPINTSMRY.reg;
-    for (uint8_t epnum = 0; epnum < USB_EPT_NUM; epnum++) {
-        if ((epints & (1 << epnum)) == 0) {
-            continue;
-        }
-
-        if (direction == TUSB_DIR_OUT && maybe_handle_setup_packet()) {
-            continue;
-        }
-        uint16_t total_transfer_size = 0;
-
-        uint8_t ep_addr = epnum;
-        if (direction == TUSB_DIR_IN) {
-            ep_addr |= TUSB_DIR_IN_MASK;
-        }
-        dcd_event_xfer_complete(0, ep_addr, total_transfer_size, XFER_RESULT_SUCCESS, true);
-
-        // just finished status stage (total size = 0), prepare for next setup packet
-        if (epnum == 0 && total_transfer_size == 0) {
-            dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
-        }
-
-    }
-}
-
-// Bank zero is for OUT and SETUP transactions.
-void USB_2_Handler(void) {
-    transfer_complete(TUSB_DIR_OUT);
-}
-
-// Bank one is used for IN transactions.
-void USB_3_Handler(void) {
-    transfer_complete(TUSB_DIR_IN);
-}
 
 #endif
