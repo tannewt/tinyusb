@@ -51,6 +51,13 @@
 #include <stdint.h>
 #include "tusb_compiler.h"
 
+#ifndef UINT32_MAX
+#define UINT32_MAX 0xFFFFFFFF
+#endif
+#ifndef UINT16_MAX
+#define UINT16_MAX 0xFFFF
+#endif
+
 //------------- Bit manipulation -------------//
 #define BIT_(n) (1U << (n))                                ///< n-th Bit
 #define BIT_SET_(x, n) ( (x) | BIT_(n) )                   ///< set n-th bit of x to 1

@@ -59,13 +59,11 @@ endif
 
 CFLAGS += $(INC) -Wall -Werror -std=gnu11 -nostdlib -DBOARD_$(shell echo $(BOARD) | tr a-z A-Z)
 
-LDFLAGS += $(CFLAGS) -nostartfiles -fshort-enums -Wl,-T,$(TOP)/$(LD_FILE) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections -specs=nosys.specs -specs=nano.specs
-LIBS := -lgcc -lc -lm -lnosys
+LDFLAGS += $(CFLAGS) -nostartfiles -fshort-enums -Wl,-T,$(TOP)/$(LD_FILE) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections #-specs=nosys.specs -specs=nano.specs
+#LIBS := #-lgcc -lc -lm -lnosys
 
 EXAMPLE_SOURCE += \
 	src/main.c \
-	src/msc_app.c \
-	src/msc_disk_ram.c \
 	src/tusb_descriptors.c
 
 SRC_C += $(addprefix $(CURRENT_PATH)/, $(EXAMPLE_SOURCE))
@@ -76,7 +74,6 @@ LIB_SOURCE += \
 	src/device/usbd.c \
 	src/device/usbd_auto_desc.c \
 	src/device/usbd_control.c \
-	src/class/msc/msc_device.c \
 	src/class/cdc/cdc_device.c \
 	src/class/hid/hid_device.c \
 	src/tusb.c \
@@ -97,7 +94,7 @@ $(OBJ_DIRS):
 
 $(BUILD)/$(BOARD)-firmware.elf: $(OBJ)
 	@echo LINK $@
-	@$(CC) -o $@ $(LDFLAGS) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
+	$(CC) -o $@ $(LDFLAGS) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
 
 $(BUILD)/$(BOARD)-firmware.bin: $(BUILD)/$(BOARD)-firmware.elf
 	@echo CREATE $@
@@ -109,7 +106,7 @@ $(BUILD)/$(BOARD)-firmware.bin: $(BUILD)/$(BOARD)-firmware.elf
 vpath %.c . $(TOP)
 $(BUILD)/obj/%.o: %.c
 	@echo CC $@
-	@$(CC) $(CFLAGS) -c -MD -o $@ $<
+	$(CC) $(CFLAGS) -c -MD -o $@ $<
 	@# The following fixes the dependency file.
 	@# See http://make.paulandlesley.org/autodep.html for details.
 	@# Regex adjusted from the above to play better with Windows paths, etc.

@@ -122,6 +122,14 @@
 
 #define __n2be_16(u16)  __builtin_bswap16(u16)
 #define __be2n_16(u16)  __n2be_16(u16)
+#else
+
+// Big Endian machines don't need swapping?
+#define __n2be(x)       x
+#define __be2n(x)       x
+
+#define __n2be_16(u16)  u16
+#define __be2n_16(u16)  u16
 #endif
 
 /** @} */

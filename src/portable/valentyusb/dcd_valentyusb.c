@@ -36,15 +36,18 @@
 */
 /**************************************************************************/
 
+#include "generated/csr.h"
+
 #include "tusb_option.h"
 
 #include "device/dcd.h"
 
 // Setup the control endpoint 0.
+/*
 static void bus_reset(void) {
     // Prepare for setup packet
     //dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
-}
+}*/
 
 
 /*------------------------------------------------------------------*/
@@ -92,7 +95,8 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt)
   return true;
 }
 
-void poll_usb_endpoints()
+/*
+static void poll_usb_endpoints()
 {
   // Endpoint zero has data.
   if (usb_ep_0_out_empty_read()) {
@@ -108,6 +112,7 @@ void poll_usb_endpoints()
     }
   }
 }
+*/
 
 bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
 {
@@ -164,15 +169,17 @@ bool dcd_edpt_busy (uint8_t rhport, uint8_t ep_addr)
   (void) rhport;
 
   uint8_t const epnum = edpt_number(ep_addr);
+  if (epnum != 0) {
+    return true;
+  }
   uint8_t const dir   = edpt_dir(ep_addr);
 
   if ( dir == TUSB_DIR_OUT ) {
     // ???
+    return false;
   } else {
     return !usb_ep_0_in_empty_read();
   }
 }
 
 /*------------------------------------------------------------------*/
-
-#endif

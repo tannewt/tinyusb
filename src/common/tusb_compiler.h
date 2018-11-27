@@ -71,11 +71,12 @@
 #define STATIC_VAR static
 #endif
 
-
 #if defined(__GNUC__)
   #include "compiler/tusb_compiler_gcc.h"
 #elif defined __ICCARM__
   #include "compiler/tusb_compiler_iar.h"
+#else
+  #error "unknown compiler"
 #endif
 
 #endif /* _TUSB_COMPILER_H_ */

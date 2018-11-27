@@ -93,12 +93,6 @@
 
 #define ENDIAN_BE16(le16) ((uint16_t) ((U16_LOW_U8(le16) << 8) | U16_HIGH_U8(le16)) )
 
-#ifndef __n2be_16
-#define __n2be_16(u16)  ((uint16_t) ((U16_LOW_U8(u16) << 8) | U16_HIGH_U8(u16)) )
-#define __be2n_16(u16)  __n2be_16(u16)
-#endif
-
-
 // for declaration of reserved field, make use of _TU_COUNTER_
 #define TU_RESERVED   XSTRING_CONCAT_(reserved, _TU_COUNTER_)
 
