@@ -7,11 +7,6 @@ INCLUDE generated/regions.ld
 
 SECTIONS
 {
-	.fbi :
-	{
-		. = . + 8; /* Firmware Base Image format (len/crc) data comes first. */
-	} > user_flash
-
 	.text :
 	{
 		_ftext = .;

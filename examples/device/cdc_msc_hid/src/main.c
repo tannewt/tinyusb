@@ -209,22 +209,5 @@ void led_blinking_task(void)
 //--------------------------------------------------------------------+
 void print_greeting(void)
 {
-  char const * const rtos_name[] =
-  {
-      [OPT_OS_NONE]      = "None",
-      [OPT_OS_FREERTOS]  = "FreeRTOS",
-  };
-
-  printf("\n--------------------------------------------------------------------\n");
-  printf("-                     Device Demo (a tinyusb example)\n");
-  printf("- if you find any bugs or get any questions, feel free to file an\n");
-  printf("- issue at https://github.com/hathach/tinyusb\n");
-  printf("--------------------------------------------------------------------\n\n");
-
-  printf("This DEVICE demo is configured to support:");
-  printf("  - RTOS = %s\n", rtos_name[CFG_TUSB_OS]);
-  if (CFG_TUD_CDC          ) puts("  - Communication Device Class");
-  if (CFG_TUD_MSC          ) puts("  - Mass Storage");
-  if (CFG_TUD_HID_KEYBOARD ) puts("  - HID Keyboard");
-  if (CFG_TUD_HID_MOUSE    ) puts("  - HID Mouse");
+  printf("Running!\n");
 }

@@ -36,6 +36,11 @@
 */
 /**************************************************************************/
 
+#include <irq.h>
+#include <stdio.h>
+#include <console.h>
+#include <uart.h>
+
 #include "generated/csr.h"
 
 #include "tusb_option.h"
@@ -45,11 +50,22 @@
 void isr(void);
 __attribute__ ((used)) void isr(void)
 {
-        //irqs = irq_pending() & irq_getmask();
+	unsigned int irqs;
+
+	irqs = irq_pending() & irq_getmask();
+
+	if(irqs & (1 << UART_INTERRUPT))
+		uart_isr();
 }
 
 void board_init(void)
 {
+	irq_setmask(0);
+	irq_setie(1);
+	uart_init();
+
+  puts("Continue? ");
+  readchar();
 }
 
 uint32_t tusb_hal_millis(void)
@@ -72,6 +88,8 @@ static void bus_reset(void) {
 bool dcd_init (uint8_t rhport)
 {
   (void) rhport;
+  usb_pullup_out_write(1);
+  printf("init\n");
   return true;
 }
 
@@ -132,6 +150,7 @@ static void poll_usb_endpoints()
 
 bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
 {
+  puts("xfter\n");
   (void) rhport;
 
   uint8_t const epnum = edpt_number(ep_addr);
@@ -182,6 +201,7 @@ void dcd_edpt_clear_stall (uint8_t rhport, uint8_t ep_addr)
 
 bool dcd_edpt_busy (uint8_t rhport, uint8_t ep_addr)
 {
+  puts("busy\n");
   (void) rhport;
 
   uint8_t const epnum = edpt_number(ep_addr);

@@ -49,32 +49,32 @@ uint16_t const * const string_desc_arr [] =
     TUD_DESC_STRCONV(0x0409),
 
     // 1: Manufacturer
-    TUD_DESC_STRCONV('t', 'i', 'n', 'y', 'u', 's', 'b', '.', 'o', 'r', 'g'),
+    TUD_DESC_STRCONV('t', 'm', 'a', 'n'),
 
     // 2: Product
-    TUD_DESC_STRCONV('t', 'i', 'n', 'y', 'u', 's', 'b', ' ', 'd', 'e', 'v', 'i', 'c', 'e'),
+    TUD_DESC_STRCONV('t', 'p', 'r', 'd'),
 
     // 3: Serials TODO use chip ID
     TUD_DESC_STRCONV('1', '2', '3', '4', '5', '6'),
 
 #if CFG_TUD_CDC
     // 4: CDC Interface
-    TUD_DESC_STRCONV('t','u','s','b',' ','c','d','c'),
+    TUD_DESC_STRCONV('t','c','d','c'),
 #endif
 
 #if CFG_TUD_MSC
     // 5: MSC Interface
-    TUD_DESC_STRCONV('t','u','s','b',' ','m','s','c'),
+    TUD_DESC_STRCONV('t','m','s','c'),
 #endif
 
 #if CFG_TUD_HID_KEYBOARD
     // 6: Keyboard
-    TUD_DESC_STRCONV('t','u','s','b',' ','k','e','y','b','o','a','r','d'),
+    TUD_DESC_STRCONV('t','k','e','y'),
 #endif
 
 #if CFG_TUD_HID_MOUSE
     // 7: Mouse
-    TUD_DESC_STRCONV('t','u','s','b',' ','m', 'o','u','s','e'),
+    TUD_DESC_STRCONV('t','m','o','s'),
 #endif
 
 };
