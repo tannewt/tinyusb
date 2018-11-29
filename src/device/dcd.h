@@ -100,7 +100,7 @@ TU_VERIFY_STATIC(
 bool dcd_init             (uint8_t rhport);
 void dcd_set_address      (uint8_t rhport, uint8_t dev_addr);
 void dcd_set_config       (uint8_t rhport, uint8_t config_num);
-
+void dcd_poll             (uint8_t rhport) ATTR_WEAK;
 void dcd_connect          (uint8_t rhport) ATTR_WEAK;
 void dcd_disconnect       (uint8_t rhport) ATTR_WEAK;
 

@@ -38,6 +38,7 @@
 
 #include <irq.h>
 #include <stdio.h>
+#include <string.h>
 #include <console.h>
 #include <uart.h>
 
@@ -46,6 +47,18 @@
 #include "tusb_option.h"
 
 #include "device/dcd.h"
+
+static uint8_t _setup_packet[8];
+
+struct {
+  uint8_t* buffer;
+  uint8_t  len;
+} out_ep_buffers[2];
+
+struct {
+  int8_t  len;
+} in_ep_buffers[2];
+
 
 void isr(void);
 __attribute__ ((used)) void isr(void)
@@ -88,8 +101,24 @@ static void bus_reset(void) {
 bool dcd_init (uint8_t rhport)
 {
   (void) rhport;
+  // Clear all the buffer pointers.
+  out_ep_buffers[0].buffer = NULL;
+  out_ep_buffers[0].len = 255;
+
+  out_ep_buffers[1].buffer = NULL;
+  out_ep_buffers[1].len = 255;
+
+  in_ep_buffers[0].len = 255;
+  in_ep_buffers[1].len = 255;
+
+  // Allow the USB to start
   usb_pullup_out_write(1);
+
   printf("init\n");
+
+  // Prepare for setup packet
+  dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+
   return true;
 }
 
@@ -129,55 +158,109 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt)
   return true;
 }
 
-/*
-static void poll_usb_endpoints()
-{
-  // Endpoint zero has data.
-  if (usb_ep_0_out_empty_read()) {
-    usb_ep_0_out_head_write(0);           // Push the FIFO forward by one
-    //buffer[i] = usb_ep_0_out_head_read(); // Read the data
-    //dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
-    //dcd_event_setup_received(0, (uint8_t*), true);
-    //dcd_event_bus_signal(0, DCD_EVENT_SOF, true);
-  } else {
-    if (usb_ep_0_in_empty_read()) {
-      // FIXME: The endpoint has finished sending the bytes...
-      dcd_event_xfer_complete(0, ep_addr, total_bytes, XFER_RESULT_SUCCESS, true);
-    }
+void ep0_xfer_complete(uint8_t len) {
+  if (len != 255) {
+    dcd_event_xfer_complete(0, 0, len, XFER_RESULT_SUCCESS, false);
+  }
+  if (len == 0) {
+    dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
   }
 }
-*/
+
+void dcd_poll(uint8_t rhport)
+{
+  printf("poll ");
+  // Endpoint zero has data.
+  if (usb_ep_0_out_ev_pending_read()) {
+    uint8_t* buffer = out_ep_buffers[0].buffer;
+    uint8_t  len    = out_ep_buffers[0].len;
+
+    if (out_ep_buffers[0].len != 255) {
+      // Read in the data
+      unsigned i = 0;
+      while (!usb_ep_0_out_empty_read()) {
+        uint8_t byte = usb_ep_0_out_head_read(); // Read the data
+        usb_ep_0_out_head_write(0);              // Push the FIFO forward by one
+        if (i < len) {
+          buffer[i] = byte;
+        }
+        i++;
+      }
+      // Clear the pointers
+      out_ep_buffers[0].buffer = NULL;
+      out_ep_buffers[0].len = 255;
+
+      // Tell tinyusb about it
+      if (&(_setup_packet[0]) == buffer) {
+        printf("ep0 out got setup g:%u w:%u ", i, len);
+        dcd_event_setup_received(0, buffer, false);
+      } else {
+        printf("ep0 out g:%u w:%u ", i, len);
+      }
+
+      for (uint8_t j = 0; j < i; j++) {
+        printf("%x ", (unsigned)(buffer[j]));
+      }
+
+      ep0_xfer_complete(i);
+    }
+  }
+
+  // Have we finished sending the packet?
+  if (usb_ep_0_in_ev_pending_read()) {
+    if (!usb_ep_0_in_empty_read()) {
+      printf("not empty\n");
+      return;
+    }
+    uint8_t len = in_ep_buffers[0].len;
+    in_ep_buffers[0].len = 255;
+    if (len != 255) {
+      printf("dcd_poll ep0  in complete %d\n", len);
+      ep0_xfer_complete(len);
+    }
+  }
+  printf("\n");
+}
 
 bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
 {
-  puts("xfter\n");
   (void) rhport;
 
-  uint8_t const epnum = edpt_number(ep_addr);
-  if (epnum != 0) {
-    return false;
-  }
   uint8_t const dir   = edpt_dir(ep_addr);
+  uint8_t const epnum = edpt_number(ep_addr);
 
+  printf("start xfer d:%u e:%u l:%u b:%p\n", dir, epnum, total_bytes, buffer);
   if ( dir == TUSB_DIR_OUT ) {
-    for(uint16_t i = 0; i < total_bytes; i++) {
-      while (usb_ep_0_out_empty_read());    // Poll for data in the FIFO
-      usb_ep_0_out_head_write(0);           // Push the FIFO forward by one
-      buffer[i] = usb_ep_0_out_head_read(); // Read the data
+    // Endpoint is in use?
+    if (out_ep_buffers[epnum].buffer != NULL) {
+      printf("buffer != NULL\n");
+      return false;
     }
-    dcd_event_xfer_complete(0, ep_addr, total_bytes, XFER_RESULT_SUCCESS, true);
+    if (total_bytes > 254) {
+      printf("total_bytes > 254\n");
+      return false;
+    }
+    out_ep_buffers[epnum].buffer = buffer;
+    out_ep_buffers[epnum].len = total_bytes;
+    usb_ep_0_out_ev_pending_write(0xff);
+
     return true;
-  } else {
+  } else if ( dir == TUSB_DIR_IN ) {
     // If the buffer isn't empty, we can't write new data.
     if (!usb_ep_0_in_empty_read()) {
+      printf("not empty\n");
       return false;
     }
     // Push the data into the outgoing FIFO
     for(uint16_t i = 0; i < total_bytes; i++) {
       usb_ep_0_in_head_write(buffer[i]);
     }
-    // FIXME: Arm the endpoint here..
+    in_ep_buffers[0].len = total_bytes;
+    usb_ep_0_in_ev_pending_write(0xff);
     return true;
+  } else {
+    printf("Unknown Direction!\n");
+    return false;
   }
 }
 

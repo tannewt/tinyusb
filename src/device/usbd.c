@@ -312,6 +312,7 @@ void usbd_task( void* param)
 #endif
 
   usbd_task_body();
+  dcd_poll(0);
 
 #if CFG_TUSB_OS != OPT_OS_NONE
   }
