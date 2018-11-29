@@ -98,7 +98,7 @@ $(BUILD)/$(BOARD)-firmware.elf: $(OBJ)
 
 $(BUILD)/$(BOARD)-firmware.bin: $(BUILD)/$(BOARD)-firmware.elf
 	@echo CREATE $@
-	$(OBJCOPY) -O binary -j .vectors -j .text -j .data $^ $@
+	$(OBJCOPY) -O binary -j .vectors -j .text -j .rodata -j .data $^ $@
 
 # We set vpath to point to the top of the tree so that the source files
 # can be located. By following this scheme, it allows a single build rule
