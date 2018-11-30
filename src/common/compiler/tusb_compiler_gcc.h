@@ -117,12 +117,14 @@
 
 // TODO mcu specific
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define LITTLE_ENDIAN 1
 #define __n2be(x)       __builtin_bswap32(x) ///< built-in function to convert 32-bit from native to Big Endian
 #define __be2n(x)       __n2be(x) ///< built-in function to convert 32-bit from Big Endian to native
 
 #define __n2be_16(u16)  __builtin_bswap16(u16)
 #define __be2n_16(u16)  __n2be_16(u16)
 #else
+#define BIG_ENDIAN 1
 
 // Big Endian machines don't need swapping?
 #define __n2be(x)       x
