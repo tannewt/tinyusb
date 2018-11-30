@@ -1,4 +1,4 @@
-include $(TOP)/../../../../build/tinyfpga_bx_usb_lm32.minimal/software/include/generated/variables.mak
+include $(TOP)/../../../../build/$(PLATFORM)_$(TARGET)_$(CPU).$(CPU_VARIANT)/software/include/generated/variables.mak
 
 CROSS_COMPILE = $(TRIPLE)-
 
