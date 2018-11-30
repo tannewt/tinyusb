@@ -79,7 +79,9 @@ void usbd_control_stall(uint8_t rhport)
 bool usbd_control_status(uint8_t rhport, tusb_control_request_t const * request)
 {
   // status direction is reversed to one in the setup packet
-  return dcd_edpt_xfer(rhport, request->bmRequestType_bit.direction ? EDPT_CTRL_OUT : EDPT_CTRL_IN, NULL, 0);
+  bool result = dcd_edpt_xfer(rhport, request->bmRequestType_bit.direction ? EDPT_CTRL_OUT : EDPT_CTRL_IN, NULL, 0);
+  printf("control status packet\r\n");
+  return result;
 }
 
 
@@ -120,6 +122,7 @@ bool usbd_control_xfer(uint8_t rhport, tusb_control_request_t const * request, v
   {
     // Status stage
     TU_ASSERT( usbd_control_status(rhport, request) );
+    printf("empty control transfer\r\n");
   }
 
   return true;
@@ -152,6 +155,7 @@ bool usbd_control_xfer_cb (uint8_t rhport, uint8_t ep_addr, xfer_result_t event,
     {
       // Send status
       TU_ASSERT( usbd_control_status(rhport, &_control_state.request) );
+      printf("xfer done cd %x\r\n", xferred_bytes);
     }else
     {
       // stall due to callback

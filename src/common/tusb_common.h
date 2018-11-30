@@ -146,15 +146,23 @@ static inline uint32_t tu_u32_from_u8(uint8_t b1, uint8_t b2, uint8_t b3, uint8_
   return ( ((uint32_t) b1) << 24) + ( ((uint32_t) b2) << 16) + ( ((uint32_t) b3) << 8) + b4;
 }
 
-static inline uint8_t tu_u16_high(uint16_t u16)
+static inline uint8_t tu_u16le_high(uint16_t u16)
 {
   return (uint8_t) ( ((uint16_t) (u16 >> 8)) & 0x00ff);
 }
 
-static inline uint8_t tu_u16_low(uint16_t u16)
+static inline uint8_t tu_u16le_low(uint16_t u16)
 {
   return (uint8_t) (u16 & 0x00ff);
 }
+
+#ifdef LITTLE_ENDIAN
+#define tu_u16_high tu_u16le_high
+#define tu_u16_low tu_u16le_low
+#else
+#define tu_u16_high tu_u16le_low
+#define tu_u16_low tu_u16le_high
+#endif
 
 static inline uint16_t tu_u16_le2be(uint16_t u16)
 {

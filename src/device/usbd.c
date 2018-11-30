@@ -328,13 +328,15 @@ void usbd_task( void* param)
 static bool process_control_request(uint8_t rhport, tusb_control_request_t const * p_request)
 {
   usbd_control_set_complete_callback(NULL);
-
+  printf("bmRequestType %x rcpt %x type %x dir %x\r\n", p_request->bmRequestType, p_request->bmRequestType_bit.recipient, p_request->bmRequestType_bit.type, p_request->bmRequestType_bit.direction);
+ 
   if ( TUSB_REQ_RCPT_DEVICE == p_request->bmRequestType_bit.recipient &&
        TUSB_REQ_TYPE_STANDARD == p_request->bmRequestType_bit.type )
   {
     //------------- Standard Device Requests e.g in enumeration -------------//
     void* data_buf = NULL;
     uint16_t data_len = 0;
+    printf("bRequest %x\r\n", p_request->bRequest);
 
     switch ( p_request->bRequest )
     {
@@ -363,6 +365,7 @@ static bool process_control_request(uint8_t rhport, tusb_control_request_t const
 
       case TUSB_REQ_GET_DESCRIPTOR:
         data_buf = (void*) get_descriptor(p_request, &data_len);
+	printf("descriptor idx %x ptr %x len %x\r\n", p_request->wIndex, data_buf, data_len);
         if ( data_buf == NULL || data_len == 0 ) return false;
       break;
 
@@ -505,15 +508,18 @@ static void const* get_descriptor(tusb_control_request_t const * p_request, uint
   uint16_t len = 0;
 
   *desc_len = 0;
+  printf("desc type %x val %x\r\n", desc_type, p_request->wValue);
 
   switch(desc_type)
   {
     case TUSB_DESC_DEVICE:
+      printf("device desc\r\n");
       desc_data = (uint8_t const *) usbd_desc_set->device;
       len       = sizeof(tusb_desc_device_t);
     break;
 
     case TUSB_DESC_CONFIGURATION:
+      printf("config descriptor\r\n");
       desc_data = (uint8_t const *) usbd_desc_set->config;
       len       = ((tusb_desc_configuration_t const*) desc_data)->wTotalLength;
     break;

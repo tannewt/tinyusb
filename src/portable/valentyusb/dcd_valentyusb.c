@@ -118,6 +118,7 @@ bool dcd_init (uint8_t rhport)
 
   // Prepare for setup packet
   dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+  printf("initial setup queued\r\n");
 
   return true;
 }
@@ -164,12 +165,13 @@ void ep0_xfer_complete(uint8_t len) {
   }
   if (len == 0) {
     dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+    printf("setup queued\r\n");
   }
 }
 
 void dcd_poll(uint8_t rhport)
 {
-  printf("poll ");
+  //printf("poll ");
   // Endpoint zero has data.
   if (usb_ep_0_out_ev_pending_read()) {
     uint8_t* buffer = out_ep_buffers[0].buffer;
@@ -196,30 +198,30 @@ void dcd_poll(uint8_t rhport)
         dcd_event_setup_received(0, buffer, false);
       } else {
         printf("ep0 out g:%u w:%u ", i, len);
+        ep0_xfer_complete(i);
       }
 
       for (uint8_t j = 0; j < i; j++) {
         printf("%x ", (unsigned)(buffer[j]));
       }
+      printf("\r\n");
 
-      ep0_xfer_complete(i);
     }
   }
 
   // Have we finished sending the packet?
   if (usb_ep_0_in_ev_pending_read()) {
     if (!usb_ep_0_in_empty_read()) {
-      printf("not empty\n");
+      printf("not empty\r\n");
       return;
     }
     uint8_t len = in_ep_buffers[0].len;
     in_ep_buffers[0].len = 255;
     if (len != 255) {
-      printf("dcd_poll ep0  in complete %d\n", len);
+      printf("dcd_poll ep0  in complete %d\r\n", len);
       ep0_xfer_complete(len);
     }
   }
-  printf("\n");
 }
 
 bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
@@ -229,26 +231,25 @@ bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t 
   uint8_t const dir   = edpt_dir(ep_addr);
   uint8_t const epnum = edpt_number(ep_addr);
 
-  printf("start xfer d:%u e:%u l:%u b:%p\n", dir, epnum, total_bytes, buffer);
+  printf("start xfer d:%u e:%u l:%u b:%p\r\n", dir, epnum, total_bytes, buffer);
   if ( dir == TUSB_DIR_OUT ) {
     // Endpoint is in use?
     if (out_ep_buffers[epnum].buffer != NULL) {
-      printf("buffer != NULL\n");
+      printf("buffer != NULL\r\n");
       return false;
     }
     if (total_bytes > 254) {
-      printf("total_bytes > 254\n");
+      printf("total_bytes > 254\r\n");
       return false;
     }
     out_ep_buffers[epnum].buffer = buffer;
     out_ep_buffers[epnum].len = total_bytes;
     usb_ep_0_out_ev_pending_write(0xff);
 
-    return true;
   } else if ( dir == TUSB_DIR_IN ) {
     // If the buffer isn't empty, we can't write new data.
     if (!usb_ep_0_in_empty_read()) {
-      printf("not empty\n");
+      printf("not empty\r\n");
       return false;
     }
     // Push the data into the outgoing FIFO
@@ -257,11 +258,15 @@ bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t 
     }
     in_ep_buffers[0].len = total_bytes;
     usb_ep_0_in_ev_pending_write(0xff);
-    return true;
   } else {
-    printf("Unknown Direction!\n");
+    printf("Unknown Direction!\r\n");
     return false;
   }
+  if (epnum == 0 && total_bytes == 0) {
+    // cheat and complete the transaction before we actually know
+    ep0_xfer_complete(0);
+  }
+  return true;
 }
 
 bool dcd_edpt_stalled (uint8_t rhport, uint8_t ep_addr)
