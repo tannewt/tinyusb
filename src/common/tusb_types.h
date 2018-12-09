@@ -214,7 +214,7 @@ enum
 //--------------------------------------------------------------------+
 
 /// USB Standard Device Descriptor (section 9.6.1, table 9-8)
-typedef struct ATTR_PACKED
+typedef struct __attribute__((scalar_storage_order("little-endian"),packed))
 {
   uint8_t  bLength            ; ///< Size of this descriptor in bytes.
   uint8_t  bDescriptorType    ; ///< DEVICE Descriptor Type.
@@ -236,7 +236,7 @@ typedef struct ATTR_PACKED
 } tusb_desc_device_t;
 
 /// USB Standard Configuration Descriptor (section 9.6.1 table 9-10) */
-typedef struct ATTR_PACKED
+typedef struct __attribute__((scalar_storage_order("little-endian"),packed))
 {
   uint8_t  bLength             ; ///< Size of this descriptor in bytes
   uint8_t  bDescriptorType     ; ///< CONFIGURATION Descriptor Type
@@ -371,17 +371,16 @@ typedef struct ATTR_PACKED
 typedef struct __attribute__((scalar_storage_order("little-endian"),packed)) {
   union {
     struct ATTR_PACKED {
-#if defined(LITTLE_ENDIAN)
       uint8_t recipient :  5; ///< Recipient type tusb_request_recipient_t.
       uint8_t type      :  2; ///< Request type tusb_request_type_t.
       uint8_t direction :  1; ///< Direction type. tusb_dir_t
-#elif defined(BIG_ENDIAN)
-      uint8_t direction :  1; ///< Direction type. tusb_dir_t
-      uint8_t type      :  2; ///< Request type tusb_request_type_t.
-      uint8_t recipient :  5; ///< Recipient type tusb_request_recipient_t.
-#else
-#error "Impossible endian!"
-#endif
+//#elif defined(BIG_ENDIAN)
+//      uint8_t direction :  1; ///< Direction type. tusb_dir_t
+//      uint8_t type      :  2; ///< Request type tusb_request_type_t.
+//      uint8_t recipient :  5; ///< Recipient type tusb_request_recipient_t.
+//#else
+//#error "Impossible endian!"
+//#endif
     } bmRequestType_bit;
     uint8_t bmRequestType;
   };
@@ -443,7 +442,7 @@ static inline uint8_t descriptor_len(uint8_t const p_desc[])
 #define TUD_DESC_STRLEN(_slen)      (2*(_slen) + 2)
 
 // Header of string descriptors with len + string type
-#define TUD_DESC_STR_HEADER(_slen)  ( (uint16_t) ( (TUSB_DESC_STRING << 8 ) | TUD_DESC_STRLEN(_slen)) )
+#define TUD_DESC_STR_HEADER(_slen)  ( (uint16_t) ( (TUSB_DESC_STRING ) | TUD_DESC_STRLEN(_slen) << 8) )
 
 // Convert comma-separated string to descriptor unicode format
 #define TUD_DESC_STRCONV( ... )     (const uint16_t[]) { TUD_DESC_STR_HEADER(VA_ARGS_NUM_(__VA_ARGS__)), __VA_ARGS__ }

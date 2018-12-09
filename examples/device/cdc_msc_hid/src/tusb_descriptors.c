@@ -46,7 +46,7 @@
 uint16_t const * const string_desc_arr [] =
 {
     // 0: is supported language = English
-    TUD_DESC_STRCONV(0x0409),
+    TUD_DESC_STRCONV(0x0904),
 
     // 1: Manufacturer
     TUD_DESC_STRCONV('t', 'm', 'a', 'n'),

@@ -31,10 +31,12 @@ LDFLAGS += \
 	$(BUILDINC_DIRECTORY)/../libbase/libbase-nofloat.a \
 	$(BUILDINC_DIRECTORY)/../libcompiler_rt/libcompiler_rt.a \
 	-lbase-nofloat \
+	-lgcc \
 	-lcompiler_rt \
 
 LIBS = \
 	-lbase-nofloat \
+	-lgcc \
 	-lcompiler_rt \
 
 #SRC_C += \
