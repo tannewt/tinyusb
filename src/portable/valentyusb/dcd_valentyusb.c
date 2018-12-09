@@ -163,6 +163,7 @@ void ep0_xfer_complete(uint8_t len) {
   }
   if (len == 0) {
     printf("queuing setup\r\n");
+    // setup->wLength = ENDIAN_BE16(setup->wLength);
     dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
   }
 }

@@ -525,6 +525,7 @@ static void const* get_descriptor(tusb_control_request_t const * p_request, uint
     break;
 
     case TUSB_DESC_STRING:
+      printf("string desc %x\r\n", desc_index);
       // String Descriptor always uses the desc set from user
       if ( desc_index < tud_desc_set.string_count )
       {

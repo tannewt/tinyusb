@@ -156,13 +156,13 @@ static inline uint8_t tu_u16le_low(uint16_t u16)
   return (uint8_t) (u16 & 0x00ff);
 }
 
-#ifdef LITTLE_ENDIAN
+//#ifdef LITTLE_ENDIAN
 #define tu_u16_high tu_u16le_high
 #define tu_u16_low tu_u16le_low
-#else
-#define tu_u16_high tu_u16le_low
-#define tu_u16_low tu_u16le_high
-#endif
+//#else
+//#define tu_u16_high tu_u16le_low
+//#define tu_u16_low tu_u16le_high
+//#endif
 
 static inline uint16_t tu_u16_le2be(uint16_t u16)
 {

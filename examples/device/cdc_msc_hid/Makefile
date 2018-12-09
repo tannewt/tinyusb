@@ -45,6 +45,7 @@ CFLAGS += \
 	-Wno-deprecated-declarations \
 	-Wnested-externs \
 	-Wunreachable-code \
+	-Wno-attributes \
 	-Wcast-align \
 	-Wno-error=lto-type-mismatch \
 	-ffunction-sections \

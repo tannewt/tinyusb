@@ -368,7 +368,7 @@ typedef struct ATTR_PACKED
 /*------------------------------------------------------------------*/
 /* Types
  *------------------------------------------------------------------*/
-typedef struct ATTR_PACKED{
+typedef struct __attribute__((scalar_storage_order("little-endian"),packed)) {
   union {
     struct ATTR_PACKED {
 #if defined(LITTLE_ENDIAN)
