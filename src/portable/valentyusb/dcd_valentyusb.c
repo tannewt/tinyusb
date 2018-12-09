@@ -293,6 +293,7 @@ bool dcd_edpt_stalled (uint8_t rhport, uint8_t ep_addr)
 void dcd_edpt_stall (uint8_t rhport, uint8_t ep_addr)
 {
   printf("stall %x\r\n", ep_addr);
+  dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
   (void) rhport;
   (void) ep_addr;
 }
