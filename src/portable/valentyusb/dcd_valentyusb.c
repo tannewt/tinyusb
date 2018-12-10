@@ -53,7 +53,7 @@ static uint8_t _setup_packet[8];
 struct {
   uint8_t* buffer;
   uint8_t  len;
-} out_ep_buffers[2];
+} out_ep_buffers[3];
 
 struct {
   int8_t  len;
@@ -108,6 +108,9 @@ bool dcd_init (uint8_t rhport)
   out_ep_buffers[1].buffer = NULL;
   out_ep_buffers[1].len = 255;
 
+  out_ep_buffers[2].buffer = NULL;
+  out_ep_buffers[2].len = 255;
+
   in_ep_buffers[0].len = 255;
   in_ep_buffers[1].len = 255;
 
@@ -141,6 +144,7 @@ void dcd_set_config (uint8_t rhport, uint8_t config_num)
   (void) rhport;
   (void) config_num;
   // Nothing to do
+  printf("set_config #:%u\r\n", config_num);
 }
 
 /*------------------------------------------------------------------*/
@@ -152,8 +156,9 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt)
   (void) rhport;
   (void) desc_edpt;
 
-  //uint8_t const epnum = edpt_number(desc_edpt->bEndpointAddress);
-  ///uint8_t const dir   = edpt_dir(desc_edpt->bEndpointAddress);
+  uint8_t const epnum = edpt_number(desc_edpt->bEndpointAddress);
+  uint8_t const dir   = edpt_dir(desc_edpt->bEndpointAddress);
+  printf("edpt_open d:%u #:%u\r\n", epnum, dir);
 
   return true;
 }
@@ -192,7 +197,18 @@ void dcd_poll(uint8_t rhport)
     }
   }
 
-  //printf("poll ");
+  if (usb_ep_1_in_ev_pending_read()) {
+    uint8_t len = in_ep_buffers[1].len;
+    in_ep_buffers[1].len = 255;
+    if (len != 255) {
+      if (!usb_ep_1_in_empty_read()) {
+        printf("not empty !?\r\n");
+      }
+      printf("dcd_poll ep1  in complete %d\r\n", len);
+      dcd_event_xfer_complete(0, 1 | TUSB_DIR_IN_MASK, len, XFER_RESULT_SUCCESS, false);
+    }
+  }
+
   // Endpoint zero has data.
   if (usb_ep_0_out_ev_pending_read()) {
     printf("\r\n");
@@ -223,7 +239,7 @@ void dcd_poll(uint8_t rhport)
       len    = out_ep_buffers[0].len;
       // Not expecting anything on ep0 at the moment
       if (len == 255) {
-        printf("ERROR: Unexpected OUT!\r\n");
+        printf("ERROR: OUT!\r\n");
 	return;
       }
       // Clear the pointers
@@ -248,15 +264,15 @@ void dcd_poll(uint8_t rhport)
       i++;
     }
     if (i < len) {
-      printf("ERROR: short packet!\r\n");
+      printf("ERROR: short!\r\n");
     }
     if (i > len) {
-      printf("ERROR: long packet!\r\n");
+      printf("ERROR: long!\r\n");
     }
 
     // Tell tinyusb about it
     if (&(_setup_packet[0]) == buffer) {
-      printf("ep0 out got setup g:%u w:%u ", i, len);
+      printf("ep0 set g:%u w:%u ", i, len);
       dcd_event_setup_received(0, buffer, false);
     } else {
       printf("ep0 out g:%u w:%u ", i, len);
@@ -269,6 +285,40 @@ void dcd_poll(uint8_t rhport)
     usb_ep_0_out_ev_pending_write(0xff);
   }
 
+  if (usb_ep_2_out_ev_pending_read()) {
+    uint8_t* buffer = out_ep_buffers[2].buffer;
+    uint8_t  len    = out_ep_buffers[2].len;
+
+    // Not expecting anything on ep0 at the moment
+    if (len == 255) {
+      printf("ERROR: OUT!\r\n");
+      return;
+    }
+    // Clear the pointers
+    out_ep_buffers[2].buffer = NULL;
+    out_ep_buffers[2].len    = 255;
+
+    // Read in the data
+    unsigned i = 0;
+    while (!usb_ep_2_out_empty_read()) {
+      uint8_t byte = usb_ep_2_out_head_read(); // Read the data
+      usb_ep_2_out_head_write(0);              // Push the FIFO forward by one
+      if (i < len) {
+        buffer[i] = byte;
+      }
+      i++;
+    }
+    if (i < len) {
+      printf("ERROR: short!\r\n");
+    }
+    if (i > len) {
+      printf("ERROR: long!\r\n");
+    }
+
+    printf("ep2 out g:%u w:%u ", i, len);
+    // Tell tinyusb about it
+    dcd_event_xfer_complete(0, 2, len, XFER_RESULT_SUCCESS, false);
+  }
 }
 
 bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
@@ -359,7 +409,7 @@ void dcd_edpt_stall_set (uint8_t rhport, uint8_t ep_addr, uint8_t value)
   if ( dir == TUSB_DIR_OUT ) {
     printf("stall out %x\r\n", ep_addr);
     if (epnum == 0) {
-      usb_ep_0_out_stall_write(value);
+      //usb_ep_0_out_stall_write(value);
     } else if (epnum == 1) {
       //usb_ep_1_out_stall_write(value);
     } else if (epnum == 2) {
