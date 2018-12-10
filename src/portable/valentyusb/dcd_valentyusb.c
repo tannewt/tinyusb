@@ -117,7 +117,7 @@ bool dcd_init (uint8_t rhport)
   printf("init\n");
 
   // Prepare for setup packet
-  dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+  //dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
   return true;
 }
 
@@ -157,14 +157,40 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt)
   return true;
 }
 
+enum PID {
+  PID_OUT     = 0b0001, // Token
+  PID_ACK     = 0b0010,
+  PID_DATA0   = 0b0011, // Data
+              //0b0100,
+  PID_SOF     = 0b0101, // Token
+              //0b0110,
+              //0b0111,
+              //0b1000,
+  PID_IN      = 0b1001, // Token
+  PID_NAK     = 0b1010,
+  PID_DATA1   = 0b1011,
+              //0b1100,
+  PID_SETUP   = 0b1101, // Token
+  PID_STALL   = 0b1110,
+              //0b1111,
+};
+
+enum TOK {
+                //XX01
+  PID_OUT     = 0b0001,
+  PID_SOF     = 0b0101,
+  PID_IN      = 0b1001,
+  PID_SETUP   = 0b1101,
+};
+
 void ep0_xfer_complete(uint8_t len) {
   if (len != 255) {
     dcd_event_xfer_complete(0, 0, len, XFER_RESULT_SUCCESS, false);
   }
   if (len == 0) {
-    printf("queuing setup\r\n");
+    //printf("queuing setup\r\n");
     // setup->wLength = ENDIAN_BE16(setup->wLength);
-    dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+    //dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
   }
 }
 
@@ -186,12 +212,63 @@ void dcd_poll(uint8_t rhport)
   //printf("poll ");
   // Endpoint zero has data.
   if (usb_ep_0_out_ev_pending_read()) {
-    uint8_t* buffer = out_ep_buffers[0].buffer;
-    uint8_t  len    = out_ep_buffers[0].len;
+    printf("\r\n");
+    enum PID last_pid = usb_last_pid_read();
+    printf("pid ");
+    switch(last_pid) {
+    case PID_OUT:
+      printf("out ");
+      break;
+    case PID_IN:
+      printf("in ");
+      break;
+    case PID_SOF:
+      printf("sof ");
+      break;
+    case PID_SETUP:
+      printf("set ");
+      break;
+    case PID_DATA0:
+      printf("d0 ");
+      break;
+    case PID_DATA1:
+      printf("d1 ");
+      break;
+    case PID_ACK:
+      printf("ack ");
+      break;
+    case PID_NAK:
+      printf("nak ");
+      break;
+    case PID_STALL:
+      printf("stl ");
+      break;
+    default:
+      printf("%x ", last_pid);
+    }
+    printf("\r\n");
 
-    // Not expecting anything on ep0 at the moment, so it is a setup packet.
-    if (out_ep_buffers[0].len == 255) {
-      return;
+    uint8_t* buffer;
+    uint8_t  len;
+    if (last_pid == PID_OUT) {
+      printf("--out\r\n");
+      buffer = out_ep_buffers[0].buffer;
+      len    = out_ep_buffers[0].len;
+      // Not expecting anything on ep0 at the moment
+      if (len == 255) {
+        printf("ERROR: Unexpected OUT!\r\n");
+	return;
+      }
+      // Clear the pointers
+      out_ep_buffers[0].buffer = NULL;
+      out_ep_buffers[0].len = 255;
+    } else if (last_pid == PID_SETUP) {
+      printf("--setup\r\n");
+      buffer = &(_setup_packet[0]);
+      len = sizeof(_setup_packet);
+    } else {
+      printf("--???\r\n");
+      printf("ERROR: Invalid PID!\r\n");
     }
 
     // Read in the data
@@ -204,19 +281,17 @@ void dcd_poll(uint8_t rhport)
       }
       i++;
     }
-
-    // Clear the pointers
-    out_ep_buffers[0].buffer = NULL;
-    out_ep_buffers[0].len = 255;
+    if (i < len) {
+      printf("ERROR: short packet!\r\n");
+    }
+    if (i > len) {
+      printf("ERROR: long packet!\r\n");
+    }
 
     // Tell tinyusb about it
     if (&(_setup_packet[0]) == buffer) {
       printf("ep0 out got setup g:%u w:%u ", i, len);
-      if (i == len) {
-        dcd_event_setup_received(0, buffer, false);
-      } else {
-	printf(" bad ");
-      }
+      dcd_event_setup_received(0, buffer, false);
     } else {
       printf("ep0 out g:%u w:%u ", i, len);
       ep0_xfer_complete(i);
@@ -225,6 +300,7 @@ void dcd_poll(uint8_t rhport)
       printf("%x ", (unsigned)(buffer[j]));
     }
     printf("\r\n");
+    usb_ep_0_out_ev_pending_write(0xff);
   }
 
 }
@@ -239,10 +315,6 @@ bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t 
   printf("start xfer d:%s e:%u l:%u b:%p ", (dir == TUSB_DIR_OUT) ? "o" : "i", epnum, total_bytes, buffer);
   if ( dir == TUSB_DIR_OUT ) {
     // Endpoint is in use?
-    if (!usb_ep_0_out_ev_pending_read()) {
-      printf("oep not pending\r\n");
-      return false;
-    }
     if (out_ep_buffers[epnum].buffer != NULL) {
       printf("oep.buffer != NULL\r\n");
       return false;
@@ -253,7 +325,6 @@ bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t 
     }
     out_ep_buffers[epnum].buffer = buffer;
     out_ep_buffers[epnum].len = total_bytes;
-    usb_ep_0_out_ev_pending_write(0xff);
     printf(" ..\r\n");
   } else if ( dir == TUSB_DIR_IN ) {
     // Endpoint is in use?
@@ -293,7 +364,7 @@ bool dcd_edpt_stalled (uint8_t rhport, uint8_t ep_addr)
 void dcd_edpt_stall (uint8_t rhport, uint8_t ep_addr)
 {
   printf("stall %x\r\n", ep_addr);
-  dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
+  //dcd_edpt_xfer(0, 0, _setup_packet, sizeof(_setup_packet));
   (void) rhport;
   (void) ep_addr;
 }
