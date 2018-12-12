@@ -328,14 +328,17 @@ bool cdcd_control_request(uint8_t rhport, tusb_control_request_t const * request
   // TODO Support multiple interfaces
   uint8_t const itf = 0;
   cdcd_interface_t* p_cdc = &_cdcd_itf[itf];
+  printf("cdc control %x\r\n", request->bRequest);
 
   switch ( request->bRequest )
   {
     case CDC_REQUEST_SET_LINE_CODING:
+      printf("set line coding\r\n");
       usbd_control_xfer(rhport, request, &p_cdc->line_coding, sizeof(cdc_line_coding_t));
     break;
 
     case CDC_REQUEST_GET_LINE_CODING:
+      printf("get line coding\r\n");
       usbd_control_xfer(rhport, request, &p_cdc->line_coding, sizeof(cdc_line_coding_t));
     break;
 
@@ -346,7 +349,7 @@ bool cdcd_control_request(uint8_t rhport, tusb_control_request_t const * request
       // Bit 1: Carrier control for half-duplex modems.
       //        This signal corresponds to V.24 signal 105 and RS-232 signal RTS (Request to Send)
       p_cdc->line_state = (uint8_t) request->wValue;
-
+      printf("set line state %x\r\n", p_cdc->line_state);
       // Invoke callback
       if ( tud_cdc_line_state_cb) tud_cdc_line_state_cb(itf, BIT_TEST_(request->wValue, 0), BIT_TEST_(request->wValue, 1));
       usbd_control_status(rhport, request);

@@ -49,17 +49,17 @@ uint16_t const * const string_desc_arr [] =
     TUD_DESC_STRCONV(0x0904),
 
     // 1: Manufacturer
-    TUD_DESC_STRCONV('t', 'm', 'a', 'n'),
+    TUD_DESC_STRCONV('t'<<8, 'm'<<8, 'a'<<8, 'n'<<8),
 
     // 2: Product
-    TUD_DESC_STRCONV('t', 'p', 'r', 'd'),
+    TUD_DESC_STRCONV('t'<<8, 'p'<<8, 'r'<<8, 'd'<<8),
 
     // 3: Serials TODO use chip ID
-    TUD_DESC_STRCONV('1', '2', '3', '4', '5', '6'),
+    TUD_DESC_STRCONV('1'<<8, '2'<<8, '3'<<8, '4'<<8, '5'<<8, '6'<<8),
 
 #if CFG_TUD_CDC
     // 4: CDC Interface
-    TUD_DESC_STRCONV('t','c','d','c'),
+    TUD_DESC_STRCONV('t'<<8,'c'<<8,'d'<<8,'c'<<8),
 #endif
 
 #if CFG_TUD_MSC
