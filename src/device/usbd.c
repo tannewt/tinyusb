@@ -439,6 +439,8 @@ static bool process_set_config(uint8_t rhport, uint8_t config_number)
   uint8_t const * p_desc = desc_cfg + sizeof(tusb_desc_configuration_t);
   uint16_t const cfg_len = ((tusb_desc_configuration_t*)desc_cfg)->wTotalLength;
 
+  printf("sc %p < %p %u\r\n", p_desc, desc_cfg + cfg_len, cfg_len);
+
   while( p_desc < desc_cfg + cfg_len )
   {
     // Each interface always starts with Interface or Association descriptor
@@ -460,7 +462,7 @@ static bool process_set_config(uint8_t rhport, uint8_t config_number)
       TU_ASSERT( drv_id < USBD_CLASS_DRIVER_COUNT ); // unsupported class
 
       // Interface number must not be used already TODO alternate interface
-      TU_ASSERT( 0xff == _usbd_dev.itf2drv[desc_itf->bInterfaceNumber] );
+      //TU_ASSERT( 0xff == _usbd_dev.itf2drv[desc_itf->bInterfaceNumber] );
       _usbd_dev.itf2drv[desc_itf->bInterfaceNumber] = drv_id;
 
       uint16_t len=0;
