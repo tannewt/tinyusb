@@ -1,0 +1,1 @@
+ignore = ["fatfs", "FreeRTOS", "lwip", "networking", "SEGGER_RTT"]

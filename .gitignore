@@ -1,3 +1,4 @@
+build
 html
 latex
 *.d
@@ -11,6 +12,7 @@ latex
 *.elf
 *.ind
 .env
+.venv
 .settings/
 .idea/
 /examples/*/*/build*

@@ -1,0 +1,4 @@
+ignore = ["audio_test", "board_test", "cdc_dual_ports", "cdc_msc_freertos", "dfu_rt",
+          "dynamic_configuration", "hid_composite", "hid_composite_freertos", "hid_generic_inout",
+          "hid_multiple_interface", "midi_test", "msc_dual_lun", "new_lwip_webserver", "uac2_headset",
+          "usbtmc", "webusb_serial"]
