@@ -294,7 +294,7 @@ static void hw_endpoint_clear_stall(uint8_t ep_addr)
     _hw_endpoint_clear_stall(ep);
 }
 
-static void dcd_rp2040_irq(void)
+void dcd_int_handler(uint8_t rhport)
 {
     uint32_t status = usb_hw->ints;
     uint32_t handled = 0;
@@ -353,7 +353,7 @@ void dcd_init (uint8_t rhport)
     // Reset hardware to default state
     rp2040_usb_init();
 
-    irq_set_exclusive_handler(USBCTRL_IRQ, dcd_rp2040_irq);
+    // irq_set_exclusive_handler(USBCTRL_IRQ, dcd_rp2040_irq);
     memset(hw_endpoints, 0, sizeof(hw_endpoints));
     assigned_address = 0;
     next_buffer_ptr = &usb_dpram->epx_data[0];
@@ -370,7 +370,7 @@ void dcd_init (uint8_t rhport)
 
     // Enable individual controller IRQS here. Processor interrupt enable will be used
     // for the global interrupt enable...
-    usb_hw->sie_ctrl = USB_SIE_CTRL_EP0_INT_1BUF_BITS; 
+    usb_hw->sie_ctrl = USB_SIE_CTRL_EP0_INT_1BUF_BITS;
     usb_hw->inte     = USB_INTS_BUFF_STATUS_BITS | USB_INTS_BUS_RESET_BITS | USB_INTS_SETUP_REQ_BITS;
 
     dcd_connect(rhport);
