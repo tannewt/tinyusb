@@ -5,8 +5,17 @@ ifeq ($(DEBUG), 1)
 CMAKE_DEFSYM += -DCMAKE_BUILD_TYPE=Debug
 endif
 
+# Default to native port. Ports >1 use PIO.
+PORT ?= 0
+
+ifeq ($(PORT), 0)
+  $(info "Native USB port")
+else
+  $(info "PIO USB port")
+endif
+
 $(BUILD):
-	cmake -S . -B $(BUILD) -DFAMILY=$(FAMILY) -DBOARD=$(BOARD) -DPICO_BUILD_DOCS=0 $(CMAKE_DEFSYM)
+	cmake -S . -B $(BUILD) -DBOARD_DEVICE_RHPORT_NUM=$(PORT) -DFAMILY=$(FAMILY) -DBOARD=$(BOARD) -DPICO_BUILD_DOCS=0 $(CMAKE_DEFSYM)
 
 all: $(BUILD)
 	$(MAKE) -C $(BUILD)

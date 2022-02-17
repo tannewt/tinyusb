@@ -81,6 +81,7 @@ if (NOT TARGET _rp2040_family_inclusion_marker)
 	add_library(tinyusb_host_base INTERFACE)
 	target_sources(tinyusb_host_base INTERFACE
 			${TOP}/src/portable/raspberrypi/rp2040/hcd_rp2040.c
+			${TOP}/src/portable/raspberrypi/rp2040/hcd_rp2pio.c
 			${TOP}/src/portable/raspberrypi/rp2040/rp2040_usb.c
 			${TOP}/src/host/usbh.c
 			${TOP}/src/host/usbh_control.c
@@ -93,9 +94,15 @@ if (NOT TARGET _rp2040_family_inclusion_marker)
 
 	# Sometimes have to do host specific actions in mostly
 	# common functions
+	# TODO: How do we pass in a setting meant for an example?
 	target_compile_definitions(tinyusb_host_base INTERFACE
 			RP2040_USB_HOST_MODE=1
 	)
+
+	target_link_libraries(tinyusb_host_base INTERFACE
+			pico_multicore
+			pico_stdlib
+			)
 
 	add_library(tinyusb_bsp INTERFACE)
 	target_sources(tinyusb_bsp INTERFACE
@@ -109,6 +116,7 @@ if (NOT TARGET _rp2040_family_inclusion_marker)
 
 	target_compile_definitions(tinyusb_additions INTERFACE
 		PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+		BOARD_DEVICE_RHPORT_NUM=${BOARD_DEVICE_RHPORT_NUM}
 	)
 
 	if(DEFINED LOG)

@@ -127,6 +127,9 @@ void board_init(void)
 #ifndef BUTTON_BOOTSEL
 #endif
 
+  // Set the system clock to a multiple of 12mhz for bitbanging USB.
+  set_sys_clock_khz(120000, true);
+
 #if defined(UART_DEV) && defined(LIB_PICO_STDIO_UART)
   bi_decl(bi_2pins_with_func(UART_TX_PIN, UART_TX_PIN, GPIO_FUNC_UART));
   uart_inst = uart_get_instance(UART_DEV);
@@ -143,7 +146,9 @@ void board_init(void)
 #endif
 
 #if TUSB_OPT_HOST_ENABLED
-  // set portfunc to host !!!
+  if (BOARD_DEVICE_RHPORT_NUM > 0) {
+    tuh_init(BOARD_DEVICE_RHPORT_NUM);
+  }
 #endif
 }
 

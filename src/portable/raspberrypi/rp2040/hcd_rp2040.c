@@ -1,3 +1,4 @@
+
 /*
  * The MIT License (MIT)
  *
@@ -39,6 +40,8 @@
 
 #include "host/hcd.h"
 #include "host/usbh.h"
+
+#include "hcd_rp2pio.h"
 
 #define ROOT_PORT 0
 
@@ -352,6 +355,9 @@ static void _hw_endpoint_init(struct hw_endpoint *ep, uint8_t dev_addr, uint8_t 
 bool hcd_init(uint8_t rhport)
 {
     pico_trace("hcd_init %d\n", rhport);
+    if (rhport > 0) {
+        return pio_init(rhport - 1);
+    }
     assert(rhport == 0);
 
     // Reset any previous state
@@ -382,6 +388,10 @@ bool hcd_init(uint8_t rhport)
 void hcd_port_reset(uint8_t rhport)
 {
     pico_trace("hcd_port_reset\n");
+    if (rhport > 0) {
+        pio_port_reset(rhport - 1);
+        return;
+    }
     assert(rhport == 0);
     // TODO: Nothing to do here yet. Perhaps need to reset some state?
 }
@@ -389,12 +399,18 @@ void hcd_port_reset(uint8_t rhport)
 bool hcd_port_connect_status(uint8_t rhport)
 {
     pico_trace("hcd_port_connect_status\n");
+    if (rhport > 0) {
+        return pio_port_connect_status(rhport - 1);
+    }
     assert(rhport == 0);
     return usb_hw->sie_status & USB_SIE_STATUS_SPEED_BITS;
 }
 
 tusb_speed_t hcd_port_speed_get(uint8_t rhport)
 {
+    if (rhport > 0) {
+        return pio_port_speed_get(rhport - 1);
+    }
     assert(rhport == 0);
     // TODO: Should enumval this register
     switch (dev_speed())
@@ -412,44 +428,58 @@ tusb_speed_t hcd_port_speed_get(uint8_t rhport)
 // Close all opened endpoint belong to this device
 void hcd_device_close(uint8_t rhport, uint8_t dev_addr)
 {
-  pico_trace("hcd_device_close %d\n", dev_addr);
-  (void) rhport;
-
-  if (dev_addr == 0) return;
-
-  for (size_t i = 1; i < TU_ARRAY_SIZE(ep_pool); i++)
-  {
-    hw_endpoint_t* ep = &ep_pool[i];
-
-    if (ep->dev_addr == dev_addr && ep->configured)
-    {
-      // in case it is an interrupt endpoint, disable it
-      usb_hw_clear->int_ep_ctrl = (1 << (ep->interrupt_num + 1));
-      usb_hw->int_ep_addr_ctrl[ep->interrupt_num] = 0;
-
-      // unconfigure the endpoint
-      ep->configured = false;
-      *ep->endpoint_control = 0;
-      *ep->buffer_control = 0;
-      hw_endpoint_reset_transfer(ep);
+    pico_trace("hcd_device_close %d\n", dev_addr);
+    if (rhport > 0) {
+        pio_device_close(rhport - 1, dev_addr);
+        return;
     }
-  }
+    (void) rhport;
+
+    if (dev_addr == 0) return;
+
+    for (size_t i = 1; i < TU_ARRAY_SIZE(ep_pool); i++)
+    {
+        hw_endpoint_t* ep = &ep_pool[i];
+
+        if (ep->dev_addr == dev_addr && ep->configured)
+        {
+            // in case it is an interrupt endpoint, disable it
+            usb_hw_clear->int_ep_ctrl = (1 << (ep->interrupt_num + 1));
+            usb_hw->int_ep_addr_ctrl[ep->interrupt_num] = 0;
+
+            // unconfigure the endpoint
+            ep->configured = false;
+            *ep->endpoint_control = 0;
+            *ep->buffer_control = 0;
+            hw_endpoint_reset_transfer(ep);
+        }
+    }
 }
 
 uint32_t hcd_frame_number(uint8_t rhport)
 {
+    if (rhport > 0) {
+        return pio_frame_number(rhport - 1);
+    }
     (void) rhport;
     return usb_hw->sof_rd;
 }
 
 void hcd_int_enable(uint8_t rhport)
 {
+    if (rhport > 0) {
+        pio_int_enable(rhport - 1);
+        return;
+    }
     assert(rhport == 0);
     irq_set_enabled(USBCTRL_IRQ, true);
 }
 
 void hcd_int_disable(uint8_t rhport)
 {
+    if (rhport > 0) {
+        pio_int_disable(rhport - 1);
+    }
     // todo we should check this is disabling from the correct core; note currently this is never called
     assert(rhport == 0);
     irq_set_enabled(USBCTRL_IRQ, false);
@@ -461,6 +491,9 @@ void hcd_int_disable(uint8_t rhport)
 
 bool hcd_edpt_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_endpoint_t const * ep_desc)
 {
+    if (rhport > 0) {
+        return pio_edpt_open(rhport - 1, dev_addr, ep_desc);
+    }
     (void) rhport;
 
     pico_trace("hcd_edpt_open dev_addr %d, ep_addr %d\n", dev_addr, ep_desc->bEndpointAddress);
@@ -480,6 +513,9 @@ bool hcd_edpt_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_endpoint_t const 
 
 bool hcd_edpt_xfer(uint8_t rhport, uint8_t dev_addr, uint8_t ep_addr, uint8_t * buffer, uint16_t buflen)
 {
+    if (rhport > 0) {
+        return pio_edpt_xfer(rhport - 1, dev_addr, ep_addr, buffer, buflen);
+    }
     (void) rhport;
 
     pico_trace("hcd_edpt_xfer dev_addr %d, ep_addr 0x%x, len %d\n", dev_addr, ep_addr, buflen);
@@ -526,6 +562,9 @@ bool hcd_edpt_xfer(uint8_t rhport, uint8_t dev_addr, uint8_t ep_addr, uint8_t * 
 
 bool hcd_setup_send(uint8_t rhport, uint8_t dev_addr, uint8_t const setup_packet[8])
 {
+    if (rhport > 0) {
+        return pio_setup_send(rhport - 1, dev_addr, setup_packet);
+    }
     (void) rhport;
 
     // Copy data into setup packet buffer
