@@ -35,13 +35,17 @@
 #include "device/usbd_pvt.h"
 #endif
 
+#include "py/runtime.h"
+
 bool tusb_init(void)
 {
 #if TUSB_OPT_DEVICE_ENABLED
+  mp_printf(&mp_plat_print, "init device %d\n", TUD_OPT_RHPORT);
   TU_ASSERT ( tud_init(TUD_OPT_RHPORT) ); // init device stack
 #endif
 
 #if TUSB_OPT_HOST_ENABLED
+  mp_printf(&mp_plat_print, "init host %d\n", TUH_OPT_RHPORT);
   TU_ASSERT( tuh_init(TUH_OPT_RHPORT) ); // init host stack
 #endif
 

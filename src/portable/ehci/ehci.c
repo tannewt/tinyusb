@@ -189,7 +189,10 @@ static void list_remove_qhd_by_addr(ehci_link_t* list_head, uint8_t dev_addr)
       prev = list_next(prev) )
   {
     // TODO check type for ISO iTD and siTD
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wcast-align"
     ehci_qhd_t* qhd = (ehci_qhd_t*) list_next(prev);
+    #pragma GCC diagnostic pop
     if ( qhd->dev_addr == dev_addr )
     {
       // TODO deactive all TD, wait for QHD to inactive before removal
@@ -578,6 +581,14 @@ static void qhd_xfer_error_isr(ehci_qhd_t * p_qhd)
 
     // no error bits are set, endpoint is halted due to STALL
     error_event = qhd_has_xact_error(p_qhd) ? XFER_RESULT_FAILED : XFER_RESULT_STALLED;
+    #define PRINT_ERROR(e) if (p_qhd->qtd_overlay.e) { TU_LOG2(#e "\r\n");}
+    PRINT_ERROR(ping_err)
+    PRINT_ERROR(non_hs_split_state)
+    PRINT_ERROR(non_hs_missed_uframe)
+    PRINT_ERROR(xact_err)
+    PRINT_ERROR(babble_err)
+    PRINT_ERROR(buffer_err)
+    PRINT_ERROR(halted)
 
     p_qhd->total_xferred_bytes += p_qhd->p_qtd_list_head->expected_bytes - p_qhd->p_qtd_list_head->total_bytes;
 
@@ -682,6 +693,7 @@ void hcd_int_handler(uint8_t rhport)
 
   if (int_status & EHCI_INT_MASK_ERROR)
   {
+    TU_LOG2("EHCI transfer error %08x\r\n", int_status);
     xfer_error_isr(rhport);
   }
 
