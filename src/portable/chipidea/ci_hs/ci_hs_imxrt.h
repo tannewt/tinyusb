@@ -68,7 +68,13 @@ TU_ATTR_ALWAYS_INLINE static inline bool imxrt_is_cache_mem(uint32_t addr) {
   return !(0x20000000 <= addr && addr < 0x20100000);
 }
 
-TU_ATTR_ALWAYS_INLINE static inline void imxrt_dcache_clean(void* addr, uint32_t data_size) {
+static __attribute__((noinline)) void imxrt_dcache_clean(void* addr, uint32_t data_size) {
+  if (data_size == 0) {
+    return;
+  }
+  if (addr == NULL) {
+    asm("bkpt");
+  }
   if (imxrt_is_cache_mem((uint32_t) addr)) {
     SCB_CleanDCache_by_Addr((uint32_t *) addr, (int32_t) data_size);
   }

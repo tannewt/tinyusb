@@ -412,6 +412,9 @@ void tuh_task_ext(uint32_t timeout_ms, bool in_isr)
         {
           TU_LOG_USBH("[%u:] USBH Defer Attach until current enumeration complete\r\n", event.rhport);
           osal_queue_send(_usbh_q, &event, in_isr);
+          // Exit tuh_task so that other code can run while we wait for enumeration. We'll be
+          // called again, so it is ok if we skip stuff in the queue.
+          return;
         }else
         {
           TU_LOG_USBH("[%u:] USBH DEVICE ATTACH\r\n", event.rhport);

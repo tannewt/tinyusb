@@ -496,6 +496,10 @@ bool hcd_edpt_xfer(uint8_t rhport, uint8_t dev_addr, uint8_t ep_addr, uint8_t * 
     qtd_init(qtd, buffer, buflen);
     qtd->pid = qhd->pid;
   }
+  // Endpoint probably not opened.
+  if (qhd == NULL) {
+    return false;
+  }
 
   // IN transfer: invalidate buffer, OUT transfer: clean buffer
   if (dir) {
@@ -921,6 +925,9 @@ static void qhd_init(ehci_qhd_t *p_qhd, uint8_t dev_addr, tusb_desc_endpoint_t c
 }
 
 static void qhd_attach_qtd(ehci_qhd_t *qhd, ehci_qtd_t *qtd) {
+  if (qhd == NULL) {
+    asm("bkpt");
+  }
   qhd->attached_qtd = qtd;
   qhd->attached_buffer = qtd->buffer[0];
 
