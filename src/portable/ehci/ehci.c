@@ -77,7 +77,7 @@ typedef struct
     ehci_qtd_t qtd;
   }control[CFG_TUH_DEVICE_MAX+CFG_TUH_HUB+1];
 
-  ehci_qhd_t qhd_pool[QHD_MAX];
+  ehci_qhd_t qhd_pool[QHD_MAX] TU_ATTR_ALIGNED(32);
   ehci_qtd_t qtd_pool[QTD_MAX] TU_ATTR_ALIGNED(32);
 
   ehci_registers_t* regs;         // operational register
@@ -327,6 +327,7 @@ bool ehci_init(uint8_t rhport, uint32_t capability_reg, uint32_t operatial_reg)
   ehci_data.cap_regs = (ehci_cap_registers_t*) capability_reg;
 
   ehci_registers_t* regs = ehci_data.regs;
+  ehci_cap_registers_t* cap_regs = ehci_data.cap_regs;
 
   // EHCI 4.1 Host Controller Initialization
 
@@ -374,7 +375,7 @@ bool ehci_init(uint8_t rhport, uint32_t capability_reg, uint32_t operatial_reg)
 
   // enable port power bit in portsc. The function of this bit depends on the value of the Port
   // Power Control (PPC) field in the HCSPARAMS register.
-  if (ehci_data.cap_regs->hcsparams_bm.port_power_control) {
+  if (cap_regs->hcsparams_bm.port_power_control) {
     // mask out all change bits since they are Write 1 to clear
     uint32_t portsc = (regs->portsc & ~EHCI_PORTSC_MASK_W1C);
     portsc |= ECHI_PORTSC_MASK_PORT_POWER;

@@ -68,10 +68,35 @@ TU_ATTR_ALWAYS_INLINE static inline bool imxrt_is_cache_mem(uintptr_t addr) {
   return !(0x20000000 <= addr && addr < 0x20100000);
 }
 
+extern void common_hal_mcu_enable_interrupts(void);
+extern void common_hal_mcu_disable_interrupts(void);
 TU_ATTR_ALWAYS_INLINE static inline void imxrt_dcache_clean(void const* addr, uint32_t data_size) {
   const uintptr_t addr32 = (uintptr_t) addr;
+
+  if (addr32 % 32 != 0) { asm("bkpt"); }
   if (imxrt_is_cache_mem(addr32)) {
+    // common_hal_mcu_disable_interrupts();
+
+    __disable_irq();
+    asm("nop");
+    // __DMB();
+
+    // NVIC_DisableIRQ(LPUART1_IRQn);
+    // NVIC_DisableIRQ(USB_OTG1_IRQn);
+    // NVIC_DisableIRQ(USB_OTG2_IRQn);
+    // FLEXRAM_IRQn
+    // SNVS_HP_WRAPPER_IRQn
     SCB_CleanDCache_by_Addr((uint32_t *) addr32, (int32_t) data_size);
+    // NVIC_EnableIRQ(USB_OTG1_IRQn);
+    // NVIC_EnableIRQ(USB_OTG2_IRQn);
+    // NVIC_EnableIRQ(LPUART1_IRQn);
+    //asm("bkpt");
+    asm("nop");
+
+    // __DMB();
+    __enable_irq();
+
+    // common_hal_mcu_enable_interrupts();
   }
 }
 
