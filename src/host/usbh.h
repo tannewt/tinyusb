@@ -159,6 +159,19 @@ bool tuh_ready(uint8_t daddr)
 }
 
 //--------------------------------------------------------------------+
+// Driver Management API
+//--------------------------------------------------------------------+
+
+// True if a TinyUSB driver is using the given interface.
+bool tuh_driver_attached(uint8_t dev_addr, uint8_t itf_num);
+
+// Try to attach a driver to the given interface.
+void tuh_driver_attach(uint8_t dev_addr, uint8_t itf_num);
+
+// Detach a driver from the given interface.
+void tuh_driver_detach(uint8_t dev_addr, uint8_t itf_num);
+
+//--------------------------------------------------------------------+
 // Transfer API
 //--------------------------------------------------------------------+
 

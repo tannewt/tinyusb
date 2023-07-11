@@ -104,6 +104,7 @@ typedef struct {
 
   // Endpoint & Interface
   uint8_t itf2drv[CFG_TUH_INTERFACE_MAX];  // map interface number to driver (0xff is invalid)
+  uint8_t itf2iad[CFG_TUH_INTERFACE_MAX];  // map interface number to the number of associated interfaces
   uint8_t ep2drv[CFG_TUH_ENDPOINT_MAX][2]; // map endpoint to driver ( 0xff is invalid ), can use only 4-bit each
 
   tu_edpt_state_t ep_status[CFG_TUH_ENDPOINT_MAX][2];
@@ -700,8 +701,14 @@ bool tuh_edpt_xfer(tuh_xfer_t* xfer)
 {
   uint8_t const daddr   = xfer->daddr;
   uint8_t const ep_addr = xfer->ep_addr;
+  uint8_t const epnum   = tu_edpt_number(ep_addr);
+  uint8_t const ep_dir  = tu_edpt_dir(ep_addr);
 
   TU_VERIFY(daddr && ep_addr);
+
+  // No internal driver is using this endpoint. If it is, then TinyUSB won't
+  // call back to user code.
+  TU_VERIFY(get_device(daddr)->ep2drv[epnum][ep_dir] == TUSB_INDEX_INVALID_8);
 
   TU_VERIFY(usbh_edpt_claim(daddr, ep_addr));
 
@@ -1158,6 +1165,81 @@ static inline bool is_hub_addr(uint8_t daddr)
 //  }
 //}
 
+// True if a TinyUSB driver is using the given interface.
+bool tuh_driver_attached(uint8_t dev_addr, uint8_t itf_num) {
+  return get_device(dev_addr)->itf2drv[itf_num] != TUSB_INDEX_INVALID_8;
+}
+
+static bool attach_driver(uint8_t rhport, uint8_t dev_addr, uint8_t assoc_itf_count, tusb_desc_interface_t const *desc_itf, uint16_t max_len) {
+  // Find driver for this interface
+  usbh_device_t *dev = get_device(dev_addr);
+  for (uint8_t drv_id = 0; drv_id < USBH_CLASS_DRIVER_COUNT; drv_id++)
+  {
+    usbh_class_driver_t const * driver = &usbh_class_drivers[drv_id];
+
+    if ( driver->open(rhport, dev_addr, desc_itf, max_len) )
+    {
+      // open successfully
+
+      // bind (associated) interfaces to found driver
+      for(uint8_t i=0; i<assoc_itf_count; i++)
+      {
+        uint8_t const itf_num = desc_itf->bInterfaceNumber+i;
+
+        // Interface number must not be used already
+        TU_ASSERT( !tuh_driver_attached(dev_addr, itf_num) );
+        dev->itf2drv[itf_num] = drv_id;
+        dev->itf2iad[itf_num] = assoc_itf_count - i;
+      }
+
+      // bind all endpoints to found driver
+      tu_edpt_bind_driver(dev->ep2drv, desc_itf, max_len, drv_id);
+
+      return true;
+    }
+  }
+  return false;
+}
+
+// Try to attach a driver to the given interface.
+void tuh_driver_attach(uint8_t dev_addr, uint8_t itf_num) {
+  // TODO: Tricky because we need the configuration descriptor with all of the
+  // interface descriptors. Maybe we store the driver's info and just suspend it
+  // until reactivated? CircuitPython will only want control until the user code
+  // exits. After the VM, we'll want to hand it all back to tinyusb so we can
+  // use it internally to CP.
+}
+
+// Detach a driver from the given interface.
+void tuh_driver_detach(uint8_t dev_addr, uint8_t itf_num) {
+  // Close class driver on the given interface.
+  usbh_device_t *dev = get_device(dev_addr);
+  uint8_t drv_id = dev->itf2drv[itf_num];
+  if (drv_id == TUSB_INDEX_INVALID_8) {
+    return;
+  }
+  usbh_class_drivers[drv_id].close(dev_addr);
+
+  // Clear all related interfaces.
+  uint8_t iad = dev->itf2iad[itf_num];
+  for(uint8_t i=0; i<iad; i++)
+  {
+    dev->itf2drv[itf_num + i] = TUSB_INDEX_INVALID_8;
+    dev->itf2iad[itf_num + i] = 0;
+  }
+
+  // Clear all related endpoints
+  // TODO: Handle cases where a driver is used more than once for a device.
+  for (size_t ep_idx = 0; ep_idx < CFG_TUH_ENDPOINT_MAX; ep_idx++) {
+    if (dev->ep2drv[ep_idx][TUSB_DIR_OUT] == drv_id) {
+      dev->ep2drv[ep_idx][TUSB_DIR_OUT] = TUSB_INDEX_INVALID_8;
+    }
+    if (dev->ep2drv[ep_idx][TUSB_DIR_IN] == drv_id) {
+      dev->ep2drv[ep_idx][TUSB_DIR_IN] = TUSB_INDEX_INVALID_8;
+    }
+  }
+}
+
 // a device unplugged from rhport:hub_addr:hub_port
 static void process_removing_device(uint8_t rhport, uint8_t hub_addr, uint8_t hub_port)
 {
@@ -1202,9 +1284,8 @@ static void process_removing_device(uint8_t rhport, uint8_t hub_addr, uint8_t hu
         if (tuh_umount_cb) tuh_umount_cb(daddr);
       }
 
-      // Close class driver
-      for (uint8_t drv_id = 0; drv_id < USBH_CLASS_DRIVER_COUNT; drv_id++) {
-        usbh_class_drivers[drv_id].close(daddr);
+      for (size_t itf_num = 0; itf_num < CFG_TUH_INTERFACE_MAX; itf_num++) {
+        tuh_driver_detach(daddr, itf_num);
       }
 
       hcd_device_close(rhport, daddr);
@@ -1582,7 +1663,7 @@ static bool _parse_configuration_descriptor(uint8_t dev_addr, tusb_desc_configur
 
   TU_LOG_USBH("Parsing Configuration descriptor (wTotalLength = %u)\r\n", total_len);
 
-  // parse each interfaces
+  // parse each interface
   while( p_desc < desc_end )
   {
     uint8_t assoc_itf_count = 1;
@@ -1629,37 +1710,9 @@ static bool _parse_configuration_descriptor(uint8_t dev_addr, tusb_desc_configur
     uint16_t const drv_len = tu_desc_get_interface_total_len(desc_itf, assoc_itf_count, (uint16_t) (desc_end-p_desc));
     TU_ASSERT(drv_len >= sizeof(tusb_desc_interface_t));
 
-    // Find driver for this interface
-    for (uint8_t drv_id = 0; drv_id < USBH_CLASS_DRIVER_COUNT; drv_id++)
-    {
-      usbh_class_driver_t const * driver = &usbh_class_drivers[drv_id];
-
-      if ( driver->open(dev->rhport, dev_addr, desc_itf, drv_len) )
-      {
-        // open successfully
-        TU_LOG_USBH("  %s opened\r\n", driver->name);
-
-        // bind (associated) interfaces to found driver
-        for(uint8_t i=0; i<assoc_itf_count; i++)
-        {
-          uint8_t const itf_num = desc_itf->bInterfaceNumber+i;
-
-          // Interface number must not be used already
-          TU_ASSERT( TUSB_INDEX_INVALID_8 == dev->itf2drv[itf_num] );
-          dev->itf2drv[itf_num] = drv_id;
-        }
-
-        // bind all endpoints to found driver
-        tu_edpt_bind_driver(dev->ep2drv, desc_itf, drv_len, drv_id);
-
-        break; // exit driver find loop
-      }
-
-      if( drv_id >= USBH_CLASS_DRIVER_COUNT )
-      {
-        TU_LOG(USBH_DEBUG, "Interface %u: class = %u subclass = %u protocol = %u is not supported\r\n",
-               desc_itf->bInterfaceNumber, desc_itf->bInterfaceClass, desc_itf->bInterfaceSubClass, desc_itf->bInterfaceProtocol);
-      }
+    if (!attach_driver(dev->rhport, dev_addr, assoc_itf_count, desc_itf, drv_len)) {
+      TU_LOG(USBH_DEBUG, "Interface %u: class = %u subclass = %u protocol = %u is not supported\r\n",
+             desc_itf->bInterfaceNumber, desc_itf->bInterfaceClass, desc_itf->bInterfaceSubClass, desc_itf->bInterfaceProtocol);    
     }
 
     // next Interface or IAD descriptor
