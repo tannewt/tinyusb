@@ -39,8 +39,8 @@
 #endif
 
 #include "nrf.h"
-#include "nrf_clock.h"
-#include "nrfx_usbd_errata.h"
+#include "hal/nrf_clock.h"
+#include "drivers/src/nrfx_usbd_errata.h"
 
 #ifdef __GNUC__
 #pragma GCC diagnostic pop

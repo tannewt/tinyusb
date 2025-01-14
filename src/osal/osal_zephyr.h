@@ -65,7 +65,10 @@ TU_ATTR_ALWAYS_INLINE static inline void osal_task_delay(uint32_t msec) {
 //--------------------------------------------------------------------+
 
 TU_ATTR_ALWAYS_INLINE static inline osal_semaphore_t osal_semaphore_create(osal_semaphore_def_t *semdef) {
-  return k_sem_init(semdef, 0, K_SEM_MAX_LIMIT);
+  if (k_sem_init(semdef, 0, K_SEM_MAX_LIMIT) != 0) {
+    return NULL;
+  }
+  return semdef;
 }
 
 TU_ATTR_ALWAYS_INLINE static inline bool osal_semaphore_delete(osal_semaphore_t semd_hdl) {
@@ -75,10 +78,11 @@ TU_ATTR_ALWAYS_INLINE static inline bool osal_semaphore_delete(osal_semaphore_t 
 
 TU_ATTR_ALWAYS_INLINE static inline bool osal_semaphore_post(osal_semaphore_t sem_hdl, bool in_isr) {
   k_sem_give(sem_hdl);
+  return true;
 }
 
 TU_ATTR_ALWAYS_INLINE static inline bool osal_semaphore_wait(osal_semaphore_t sem_hdl, uint32_t msec) {
-  return k_sem_take(sem_hdl, _osal_ms2timeout(msec));
+  return k_sem_take(sem_hdl, _osal_ms2timeout(msec)) == 0;
 }
 
 TU_ATTR_ALWAYS_INLINE static inline void osal_semaphore_reset(osal_semaphore_t const sem_hdl) {
@@ -90,7 +94,10 @@ TU_ATTR_ALWAYS_INLINE static inline void osal_semaphore_reset(osal_semaphore_t c
 //--------------------------------------------------------------------+
 
 TU_ATTR_ALWAYS_INLINE static inline osal_mutex_t osal_mutex_create(osal_mutex_def_t *mdef) {
-  return k_mutex_init(mdef);
+  if (k_mutex_init(mdef) != 0) {
+    return NULL;
+  }
+  return mdef;
 }
 
 TU_ATTR_ALWAYS_INLINE static inline bool osal_mutex_delete(osal_mutex_t mutex_hdl) {
