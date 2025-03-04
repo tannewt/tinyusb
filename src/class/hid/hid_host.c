@@ -490,7 +490,10 @@ bool hidh_open(uint8_t rhport, uint8_t daddr, tusb_desc_interface_t const* desc_
   TU_ASSERT(HID_DESC_TYPE_HID == desc_hid->bDescriptorType);
 
   hidh_interface_t* p_hid = find_new_itf();
-  TU_ASSERT(p_hid); // not enough interface, try to increase CFG_TUH_HID
+  if (p_hid == NULL) {
+    TU_LOG2("[%u] Not enough interfaces, increase CFG_TUH_HID\r\n", daddr);
+    return false;
+  }
   p_hid->daddr = daddr;
 
   //------------- Endpoint Descriptors -------------//
