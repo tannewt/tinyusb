@@ -489,6 +489,13 @@ bool hidh_open(uint8_t rhport, uint8_t daddr, tusb_desc_interface_t const* desc_
   tusb_hid_descriptor_hid_t const* desc_hid = (tusb_hid_descriptor_hid_t const*) p_desc;
   TU_ASSERT(HID_DESC_TYPE_HID == desc_hid->bDescriptorType);
 
+  // Temporary fix for not being able to detach the native driver from the endpoints we want to open
+  // from CircuitPython. In the future, we should be able to detach the native driver from the endpoints
+  // we want to open. So, only use the native driver for keyboard devices.
+  if (desc_itf->bInterfaceProtocol != HID_ITF_PROTOCOL_KEYBOARD) {
+    return false;
+  }
+
   hidh_interface_t* p_hid = find_new_itf();
   TU_ASSERT(p_hid); // not enough interface, try to increase CFG_TUH_HID
   p_hid->daddr = daddr;
