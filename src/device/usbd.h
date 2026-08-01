@@ -94,8 +94,14 @@ tusb_speed_t tud_speed_get(void);
 // True if just got out of Bus Reset and received the very first data from host
 bool tud_connected(void);
 
+// Check if a specific rhport is connected
+bool tud_rhport_connected(uint8_t rhport);
+
 // Check if device is connected and configured
 bool tud_mounted(void);
+
+// Check if a specific rhport is mounted
+bool tud_rhport_mounted(uint8_t rhport);
 
 // Check if device is suspended
 bool tud_suspended(void);
@@ -136,36 +142,36 @@ bool tud_control_status(uint8_t rhport, tusb_control_request_t const * request);
 
 // Invoked when received GET DEVICE DESCRIPTOR request
 // Application return pointer to descriptor
-uint8_t const * tud_descriptor_device_cb(void);
+uint8_t const * tud_descriptor_device_cb(uint8_t rhport);
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-uint8_t const * tud_descriptor_configuration_cb(uint8_t index);
+uint8_t const * tud_descriptor_configuration_cb(uint8_t rhport, uint8_t index);
 
 // Invoked when received GET STRING DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid);
+uint16_t const* tud_descriptor_string_cb(uint8_t rhport, uint8_t index, uint16_t langid);
 
 // Invoked when received GET BOS DESCRIPTOR request
 // Application return pointer to descriptor
-uint8_t const * tud_descriptor_bos_cb(void);
+uint8_t const * tud_descriptor_bos_cb(uint8_t rhport);
 
 // Invoked when received GET DEVICE QUALIFIER DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete.
 // device_qualifier descriptor describes information about a high-speed capable device that would
 // change if the device were operating at the other speed. If not highspeed capable stall this request.
-uint8_t const* tud_descriptor_device_qualifier_cb(void);
+uint8_t const* tud_descriptor_device_qualifier_cb(uint8_t rhport);
 
 // Invoked when received GET OTHER SEED CONFIGURATION DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
 // Configuration descriptor in the other speed e.g if high speed then this is for full speed and vice versa
-uint8_t const* tud_descriptor_other_speed_configuration_cb(uint8_t index);
+uint8_t const* tud_descriptor_other_speed_configuration_cb(uint8_t rhport, uint8_t index);
 
 // Invoked when device is mounted (configured)
-void tud_mount_cb(void);
+void tud_mount_cb(uint8_t rhport);
 
 // Invoked when device is unmounted
-void tud_umount_cb(void);
+void tud_umount_cb(uint8_t rhport);
 
 // Invoked when usb bus is suspended
 // Within 7ms, device must draw an average of current less than 2.5 mA from bus
